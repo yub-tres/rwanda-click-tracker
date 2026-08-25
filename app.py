@@ -18,7 +18,8 @@ at the bottom of this file.
 import os
 import uuid
 import logging
-from datetime import date
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from flask import Flask, redirect, request, make_response
 from pyairtable import Api
 
@@ -26,6 +27,16 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("click_tracker")
 
 app = Flask(__name__)
+
+EASTERN = ZoneInfo("America/New_York")
+
+
+def today_et() -> str:
+    """Today's date in Eastern time (handles EST/EDT automatically),
+    instead of the server's own timezone (Render runs in UTC, which
+    can be a day ahead of Eastern in the evening)."""
+    return datetime.now(EASTERN).date().isoformat()
+
 
 AIRTABLE_API_KEY = os.environ["AIRTABLE_API_KEY"]
 AIRTABLE_BASE_ID = os.environ["AIRTABLE_BASE_ID"]
@@ -53,7 +64,7 @@ def is_first_click_from_this_visitor(visitor_id: str, record_id: str) -> bool:
             "Key": key,
             "Visitor ID": visitor_id,
             "Resource ID": record_id,
-            "First Clicked": date.today().isoformat()
+            "First Clicked": today_et()
         })
         return True
     except Exception as e:
@@ -87,7 +98,7 @@ def go(record_id):
 
     update_fields = {
         "Click Count": current_clicks + 1,
-        "Last Clicked": date.today().isoformat()
+        "Last Clicked": today_et()
     }
 
     if is_first_click_from_this_visitor(visitor_id, record_id):
